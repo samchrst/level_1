@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Static Template</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #app {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        h2 {
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        p {
+            color: #555;
+            margin: 0;
+        }
+
+        input {
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        select {
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+
+        .product-container {
+            margin-bottom: 20px;
+        }
+
+        .cart-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>{{ text }}</h1>
+
+        <!-- Filter input field -->
+        <label for="filter">Filter by Name:</label>
+        <input type="text" id="filter" v-model="filterText">
+
+        <!-- Checkbox for available products -->
+        <label>
+            <input type="checkbox" v-model="showAvailable"> Available products only
+        </label>
+
+        <!-- Dropdown list for sorting -->
+        <label for="sort">Sort by:</label>
+        <select id="sort" v-model="sortBy">
+            <option value="name">Name</option>
+            <option value="price">Price</option>
+        </select>
+
+        <!-- Form to add a new product -->
+        <form @submit.prevent="addProduct">
+            <label for="productName">Product Name:</label>
+            <input type="text" id="productName" v-model="newProductName" required>
+
+            <label for="productID">Product ID:</label>
+            <input type="text" id="productID" v-model="newProductID" required>
+
+            <label for="productPrice">Product Price:</label>
+            <input type="text" id="productPrice" v-model="newProductPrice" required>
+
+            <button type="submit">Add Product</button>
+        </form>
+
+        <!-- Displaying the filtered and sorted list of products -->
+        <div v-for="(name, index) in filteredAndSortedProducts" :key="index" class="product-container">
+            <h2>{{ name }}</h2>
+            <p>ID: {{ productIDs[index] }}</p>
+            <p>Price: {{ productPrices[index] }}</p>
+            <!-- Conditionally render the button based on product availability -->
+            <button v-if="isProductAvailable(index)" @click="addToCart(index)">Add to Cart</button>
+            <p v-else>Product unavailable</p>
+        </div>
+
+        <!-- Displaying the cart -->
+        <div class="cart-container">
+            <h2>Cart</h2>
+            <div v-for="(item, index) in cart" :key="index">
+                <li>
+                    {{ item.name }}
+                    <span>Quantity: <input type="number" v-model="item.quantity" min="1" @change="updateCartItem(index)"></span>
+                    <span>Price: {{ item.price }}.-</span>
+                    <span>Total: {{ item.total }}.-</span>
+                    <button @click="removeFromCart(index)">X</button>
+                </li>
+            </div>
+            <p>You have {{ totalItemsInCart }} for a total of {{ totalPrice }}.-</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+        createApp({
+            data() {
+                return {
+                    text: 'Products',
+                    products: ['iPhone', 'Samsung Galaxy', 'Surface Duo unavailable'],
+                    productIDs: ['1', '2', '3'],
+                    productPrices: ['1100.-', '999.-', '1399.-'],
+                    newProductName: '',
+                    newProductID: '',
+                    newProductPrice: '',
+                    filterText: '',
+                    showAvailable: false,
+                    sortBy: 'name',
+                    cart: [],
+                }
+            },
+            computed: {
+                filteredAndSortedProducts() {
+                    let filteredProducts = this.products.filter(product =>
+                        product.toLowerCase().includes(this.filterText.toLowerCase())
+                    );
+
+                    if (this.showAvailable) {
+                        filteredProducts = filteredProducts.filter((product, index) =>
+                            this.isProductAvailable(index)
+                        );
+                    }
+
+                    return this.sortProducts(filteredProducts);
+                },
+                totalItemsInCart() {
+                    return this.cart.reduce((total, item) => total + item.quantity, 0);
+                },
+                totalPrice() {
+                    return this.cart.reduce((total, item) => total + item.total, 0);
+                }
+            },
+            methods: {
+                addProduct() {
+                    this.products.push(this.newProductName);
+                    this.productIDs.push(this.newProductID);
+                    this.productPrices.push(this.newProductPrice);
+
+                    // Reset input fields
+                    this.newProductName = '';
+                    this.newProductID = '';
+                    this.newProductPrice = '';
+                },
+                isProductAvailable(index) {
+                    return this.products[index] !== 'Surface Duo unavailable';
+                },
+
+                sortProducts(products) {
+                    if (this.sortBy === 'name') {
+                        return products.sort((a, b) => a.localeCompare(b));
+                    } else if (this.sortBy === 'price') {
+                        return products.sort((a, b) => this.getProductPrice(a) - this.getProductPrice(b));
+                    }
+                    return products;
+                },
+                getProductPrice(product) {
+                    const index = this.products.indexOf(product);
+                    return parseFloat(this.productPrices[index]);
+                },
+                addToCart(index) {
+                    const name = this.products[index];
+                    const price = this.getProductPrice(name);
+
+                    const cartItemIndex = this.cart.findIndex(item => item.name === name);
+
+                    if (cartItemIndex !== -1) {
+                        // If item already exists in the cart, increase quantity and update total
+                        this.cart[cartItemIndex].quantity++;
+                        this.cart[cartItemIndex].total = this.cart[cartItemIndex].quantity * price;
+                    } else {
+                        // If item doesn't exist in the cart, add it with quantity 1
+                        this.cart.push({
+                            name,
+                            quantity: 1,
+                            price,
+                            total: price,
+                        });
+                    }
+                },
+                isProductUnavailable(index) {
+                    return !this.isProductAvailable(index);
+                },
+                updateCartItem(index) {
+                    const item = this.cart[index];
+                    const price = this.getProductPrice(item.name);
+
+                    // Update the total based on the modified quantity
+                    item.total = item.quantity * price;
+                },
+                removeFromCart(index) {
+                    // Remove the product from the cart array
+                    this.cart.splice(index, 1);
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>

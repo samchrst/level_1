@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Product Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #app {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+
+        p {
+            color: #555;
+            margin: 0;
+        }
+
+        input {
+            margin-bottom: 10px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        select {
+            margin-bottom: 10px;
+            padding: 5px;
+        }
+
+        .product-container {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .product-container img {
+            max-width: 100px;
+            max-height: 100px;
+            margin-bottom: 10px;
+        }
+
+        .cart-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>{{ text }}</h1>
+
+        <!-- Filter input field -->
+        <div class="mb-3">
+            <label for="filter">Search by Name:</label>
+            <input type="text" id="filter" v-model="filterText" class="form-control">
+        </div>
+
+        <!-- Checkbox for available products -->
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" v-model="showAvailable" id="availableCheckbox">
+            <label class="form-check-label" for="availableCheckbox">Available products only</label>
+        </div>
+
+        <!-- Dropdown list for sorting -->
+        <div class="mb-3">
+            <label for="sort">Sort by:</label>
+            <select id="sort" v-model="sortBy" class="form-select">
+                <option value="name">Name</option>
+                <option value="price">Price</option>
+            </select>
+        </div>
+
+        <!-- Displaying the filtered and sorted list of products -->
+        <div v-for="(product, index) in filteredAndSortedProducts" :key="index" class="product-container">
+            <h2>{{ product.title }}</h2>
+            <p>ID: {{ product.id }}</p>
+            <p>Price: {{ product.price }}</p>
+            <p>Description: {{ product.description }}</p>
+            <p>Number in Stock: {{ product.stock }}</p>
+            <img :src="product.thumbnail" alt="Product Thumbnail">
+            <!-- Conditionally render the button based on product availability -->
+            <button v-if="isProductAvailable(index)" @click="addToCart(product)" class="btn btn-success">Add to Cart</button>
+            <p v-else>Product unavailable</p>
+        </div>
+
+        <!-- Displaying the cart -->
+        <div class="cart-container">
+            <h2>Cart</h2>
+            <div v-for="(item, index) in cart" :key="index">
+                <div class="mb-3">
+                    <strong>{{ item.name }}</strong>
+                    <div>Quantity: <input type="number" v-model="item.quantity" min="1" @change="updateCartItem(index)" class="form-control"></div>
+                    <div>Price: {{ item.price }}.-</div>
+                    <div>Total: {{ item.total }}.-</div>
+                    <button @click="removeFromCart(index)" class="btn btn-danger">Remove</button>
+                </div>
+            </div>
+            <p>You have {{ totalItemsInCart }} for a total of {{ totalPrice }}.-</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createApp } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+        
+        createApp({
+            data() {
+                return {
+                    text: 'Products',
+                    products: [],
+                    productIDs: [],
+                    productPrices: [],
+                    newProductName: '',
+                    newProductID: '',
+                    newProductPrice: '',
+                    filterText: '',
+                    showAvailable: false,
+                    sortBy: 'name',
+                    cart: [],
+                };
+            },
+            computed: {
+                filteredAndSortedProducts() {
+                    return this.sortProducts(this.products);
+                },
+                totalItemsInCart() {
+                    return this.cart.reduce((total, item) => total + item.quantity, 0);
+                },
+                totalPrice() {
+                    return this.cart.reduce((total, item) => total + item.total, 0);
+                }
+            },
+            watch: {
+                filterText(newFilterText) {
+                    this.searchProducts(newFilterText);
+                }
+            },
+            methods: {
+                isProductAvailable(index) {
+                    return index % 2 === 0;
+                },
+                sortProducts(products) {
+                    if (this.sortBy === 'name') {
+                        return products.sort((a, b) => a.title.localeCompare(b.title));
+                    } else if (this.sortBy === 'price') {
+                        return products.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
+                    }
+                    return products;
+                },
+                addToCart(product) {
+                    const cartItemIndex = this.cart.findIndex(item => item.id === product.id);
+
+                    if (cartItemIndex !== -1) {
+                        // If item already exists in the cart, increase quantity and update total
+                        this.cart[cartItemIndex].quantity++;
+                        this.cart[cartItemIndex].total = this.cart[cartItemIndex].quantity * parseFloat(product.price);
+                    } else {
+                        // If item doesn't exist in the cart, add it with quantity 1
+                        this.cart.push({
+                            id: product.id,
+                            name: product.title,
+                            quantity: 1,
+                            price: parseFloat(product.price),
+                            total: parseFloat(product.price),
+                        });
+                    }
+                },
+                updateCartItem(index) {
+                    const item = this.cart[index];
+                    const product = this.products.find(p => p.id === item.id);
+
+                    // Update the total based on the modified quantity
+                    item.total = item.quantity * parseFloat(product.price);
+                },
+                removeFromCart(index) {
+                    // Remove the product from the cart array
+                    this.cart.splice(index, 1);
+                },
+                async fetchProducts() {
+                    try {
+                        const response = await fetch('https://dummyjson.com/products');
+                        const data = await response.json();
+                        this.products = data.products || [];
+                    } catch (error) {
+                        console.error('Error fetching products:', error);
+                    }
+                },
+                async searchProducts(searchTerm) {
+                    try {
+                        const response = await fetch(`https://dummyjson.com/products/search?q=${searchTerm}`);
+                        const data = await response.json();
+                        this.products = data.products || [];
+                    } catch (error) {
+                        console.error('Error searching products:', error);
+                    }
+                }
+            },
+            mounted() {
+                // Fetch products when the component is mounted
+                this.fetchProducts();
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
